@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced RAG Intelligence Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #050505;
+            --bg-surface: #0f0f11;
+            --bg-surface-hover: #1a1a1e;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --border-color: #27272a;
+            
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --strict-color: #ec4899;
+            --open-color: #10b981;
+            --crag-color: #f59e0b;
+            --self-color: #8b5cf6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: radial-gradient(circle at 50% 0%, var(--accent-glow) 0%, transparent 70%);
+            overflow-x: hidden;
+        }
+
+        /* Animated Background Elements */
+        .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: -1;
+            opacity: 0.4;
+            animation: float 20s infinite alternate ease-in-out;
+        }
+        .blob-1 { top: -100px; left: -100px; width: 400px; height: 400px; background: #4f46e5; }
+        .blob-2 { bottom: -150px; right: 10%; width: 500px; height: 500px; background: #7c3aed; animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, 50px) scale(1.1); }
+        }
+
+        header {
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(5, 5, 5, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, #9ca3af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        main {
+            flex: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+            width: 100%;
+        }
+
+        /* Query Section */
+        .search-container {
+            max-width: 800px;
+            margin: 0 auto 4rem auto;
+            position: relative;
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 0.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .search-box:hover, .search-box:focus-within {
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 40px rgba(99, 102, 241, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        #queryInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 1.2rem 1.5rem;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        #queryInput:focus {
+            outline: none;
+        }
+
+        #queryInput::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: white;
+            border: none;
+            padding: 1.2rem 2rem;
+            border-radius: 18px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: inherit;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Results Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .results-grid.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .rag-card {
+            background: rgba(15, 15, 17, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .rag-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: var(--card-color, #fff);
+            opacity: 0.8;
+        }
+
+        .rag-card.strict { --card-color: var(--strict-color); }
+        .rag-card.open { --card-color: var(--open-color); }
+        .rag-card.crag { --card-color: var(--crag-color); }
+        .rag-card.self { --card-color: var(--self-color); }
+
+        .rag-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .icon-box {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: color-mix(in srgb, var(--card-color) 15%, transparent);
+            color: var(--card-color);
+        }
+
+        .card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+            flex-grow: 1;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #d1d5db;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .card-body::-webkit-scrollbar {
+            width: 6px;
+        }
+        .card-body::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+
+        .card-footer {
+            padding: 1rem 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Loading Animation */
+        .loader-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .bars {
+            display: flex;
+            gap: 6px;
+        }
+
+        .bar {
+            width: 6px;
+            height: 30px;
+            background: #6366f1;
+            border-radius: 3px;
+            animation: sound 1s infinite ease-in-out alternate;
+        }
+
+        .bar:nth-child(1) { animation-delay: 0.1s; background: var(--strict-color); }
+        .bar:nth-child(2) { animation-delay: 0.2s; background: var(--open-color); }
+        .bar:nth-child(3) { animation-delay: 0.3s; background: var(--crag-color); }
+        .bar:nth-child(4) { animation-delay: 0.4s; background: var(--self-color); }
+
+        @keyframes sound {
+            0% { height: 10px; opacity: 0.5; }
+            100% { height: 40px; opacity: 1; }
+        }
+
+        .loading-text {
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        /* Placeholder state */
+        .placeholder-text {
+            color: rgba(255, 255, 255, 0.2);
+            font-style: italic;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .search-box {
+                flex-direction: column;
+                background: transparent;
+                border: none;
+                box-shadow: none;
+                padding: 0;
+            }
+            #queryInput {
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 20px;
+                width: 100%;
+                margin-bottom: 1rem;
+            }
+            .submit-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <header>
+        <h1>Advanced RAG Compare</h1>
+        <div class="subtitle">Evaluate responses from Strict, Open, Corrective, and Self-Reflective architectures</div>
+    </header>
+
+    <main>
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="queryInput" placeholder="Ask a complex question to evaluate the models..." onkeypress="handleKeyPress(event)">
+                <button class="submit-btn" onclick="sendQuery()" id="queryBtn">
+                    Synthesize Insight
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="loader-container" id="loader">
+            <div class="bars">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+            <div class="loading-text">ORCHESTRATING INFERENCE PIPELINES...</div>
+        </div>
+
+        <div class="results-grid" id="resultsGrid">
+            <!-- Strict RAG -->
+            <div class="rag-card strict">
+                <div class="card-header">
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    </div>
+                    <div class="card-title">Strict RAG</div>
+                </div>
+                <div class="card-body" id="res-strict">
+                    <div class="placeholder-text">Awaiting query...</div>
+                </div>
+                <div class="card-footer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="src-strict">Deterministic retrieval</span>
+                </div>
+            </div>
+
+            <!-- Open RAG -->
+            <div class="rag-card open">
+                <div class="card-header">
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                    </div>
+                    <div class="card-title">Open RAG</div>
+                </div>
+                <div class="card-body" id="res-open">
+                    <div class="placeholder-text">Awaiting query...</div>
+                </div>
+                <div class="card-footer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="src-open">Broad context generation</span>
+                </div>
+            </div>
+
+            <!-- C-RAG -->
+            <div class="rag-card crag">
+                <div class="card-header">
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h4l3-9 5 18 3-9h5"></path></svg>
+                    </div>
+                    <div class="card-title">Corrective RAG</div>
+                </div>
+                <div class="card-body" id="res-crag">
+                    <div class="placeholder-text">Awaiting query...</div>
+                </div>
+                <div class="card-footer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="src-crag">Self-correcting with search</span>
+                </div>
+            </div>
+
+            <!-- Self-RAG -->
+            <div class="rag-card self">
+                <div class="card-header">
+                    <div class="icon-box">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </div>
+                    <div class="card-title">Self-RAG</div>
+                </div>
+                <div class="card-body" id="res-self">
+                    <div class="placeholder-text">Awaiting query...</div>
+                </div>
+                <div class="card-footer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="src-self">Reflective critique & routing</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('resultsGrid').classList.add('visible');
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                sendQuery();
+            }
+        }
+
+        async function sendQuery() {
+            const queryInput = document.getElementById('queryInput');
+            const query = queryInput.value.trim();
+            const btn = document.getElementById('queryBtn');
+            const loader = document.getElementById('loader');
+            const resultsGrid = document.getElementById('resultsGrid');
+
+            if (!query) return;
+
+            // UI Transitions
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            resultsGrid.classList.remove('visible');
+            
+            setTimeout(() => {
+                resultsGrid.style.display = 'none';
+                loader.style.display = 'flex';
+                
+                // Clear previous contents
+                ['strict', 'open', 'crag', 'self'].forEach(key => {
+                    document.getElementById(`res-${key}`).innerHTML = '';
+                });
+            }, 500);
+
+            try {
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Inject responses and simulate typing or just show
+                    document.getElementById('res-strict').innerText = data.strict_rag?.answer || "No response generated.";
+                    document.getElementById('src-strict').innerText = `Docs retrieved: ${data.strict_rag?.docs?.length || 0}`;
+
+                    document.getElementById('res-open').innerText = data.open_rag?.answer || "No response generated.";
+                    document.getElementById('src-open').innerText = `Docs retrieved: ${data.open_rag?.docs?.length || 0}`;
+
+                    document.getElementById('res-crag').innerText = data.crag?.answer || "No response generated.";
+                    document.getElementById('src-crag').innerText = `Vectors + Web Search used`;
+
+                    document.getElementById('res-self').innerText = data.self_rag?.answer || "No response generated.";
+                    document.getElementById('src-self').innerText = `Docs processed: ${data.self_rag?.docs?.length || 0}`;
+                } else {
+                    alert("Error: " + (data.detail || "Unknown error occurred."));
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Failed to connect to the intelligence engine. Ensure backend is running.");
+            } finally {
+                // Restore UI
+                loader.style.display = 'none';
+                resultsGrid.style.display = 'grid';
+                
+                // Trigger flow-in animation
+                setTimeout(() => {
+                    resultsGrid.classList.add('visible');
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }, 50);
+            }
+        }
+    </script>
+</body>
+</html>
